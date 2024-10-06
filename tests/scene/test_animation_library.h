@@ -37,28 +37,131 @@
 
 namespace TestAnimationLibrary {
 
+static inline Array build_array() {
+	return Array();
+}
+template <typename... Targs>
+static inline Array build_array(Variant item, Targs... Fargs) {
+	Array a = build_array(Fargs...);
+	a.push_front(item);
+	return a;
+}
+
+const int NUM_BAD_NAMES = 4;
+
+const char *empty_name = "";
+
+const String bad_names[NUM_BAD_NAMES] = {
+	String("[stop]"),
+	String("7,5"),
+	String(":("),
+	String("/home")
+};
+
+const String validated_names[NUM_BAD_NAMES]{
+	String("_stop]"),
+	String("7_5"),
+	String("_("),
+	String("_home")
+};
+
+const String good_name_1 = "The starry heavens above?";
+const String good_name_2 = "The moral law within!";
+
+const char *signal_animation_added = "animation_added";
+const char *signal_animation_removed = "animation_removed";
+
 TEST_CASE("[AnimationLibrary] Name Validation") {
-	const String empty_name = "";
-
-	const String bad_names[4] = {
-		String("[stop]"),
-		String("7,5"),
-		String(":("),
-		String("/home")
-	};
-
-	const String good_name = "A good name";
-
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < NUM_BAD_NAMES; i++) {
 		CHECK_FALSE(AnimationLibrary::is_valid_animation_name(bad_names[i]));
 		CHECK_FALSE(AnimationLibrary::is_valid_library_name(bad_names[i]));
+		CHECK_EQ(AnimationLibrary::validate_library_name(bad_names[i]), validated_names[i]);
 	}
 
 	CHECK_FALSE(AnimationLibrary::is_valid_animation_name(empty_name));
 	CHECK(AnimationLibrary::is_valid_library_name(empty_name));
 
-	CHECK(AnimationLibrary::is_valid_animation_name(good_name));
-	CHECK(AnimationLibrary::is_valid_library_name(good_name));
+	CHECK(AnimationLibrary::is_valid_animation_name(good_name_1));
+	CHECK(AnimationLibrary::is_valid_animation_name(good_name_2));
+
+	CHECK(AnimationLibrary::is_valid_library_name(good_name_1));
+	CHECK(AnimationLibrary::is_valid_library_name(good_name_2));
+}
+
+TEST_CASE("[AnimationLibrary] Add Animation") { // Should this depends on the test for get animation?
+	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
+	animation_library.instantiate();
+	Ref<Animation> new_animation_1 = memnew(Animation);
+	Ref<Animation> new_animation_2 = memnew(Animation);
+
+	SIGNAL_WATCH(animation_library.ptr(), signal_animation_added);
+	SIGNAL_WATCH(animation_library.ptr(), signal_animation_removed);
+	SUBCASE("Invalid parameter") {
+		ERR_PRINT_OFF;
+
+		for (int i = 0; i < NUM_BAD_NAMES; i++) {
+			CHECK_EQ(animation_library->add_animation(bad_names[i], new_animation_1), ERR_INVALID_PARAMETER);
+		}
+
+		CHECK_EQ(animation_library->add_animation(empty_name, new_animation_1), ERR_INVALID_PARAMETER);
+
+		CHECK_EQ(animation_library->add_animation(good_name_1, nullptr), ERR_INVALID_PARAMETER);
+
+		SIGNAL_CHECK_FALSE(signal_animation_added);
+		SIGNAL_CHECK_FALSE(signal_animation_removed);
+
+		ERR_PRINT_ON;
+	}
+
+	SUBCASE("Add one animation") {
+		CHECK_EQ(animation_library->add_animation(good_name_1, new_animation_1), OK);
+		SIGNAL_CHECK(signal_animation_added, build_array(build_array(StringName(good_name_1))));
+		SIGNAL_CHECK_FALSE(signal_animation_removed);
+
+		CHECK(animation_library->has_animation(StringName(good_name_1)));
+	}
+
+	SUBCASE("Two different animations") {
+		CHECK_EQ(animation_library->add_animation(good_name_1, new_animation_1), OK);
+		CHECK_EQ(animation_library->add_animation(good_name_2, new_animation_2), OK);
+
+		SIGNAL_CHECK(signal_animation_added, build_array(build_array(StringName(good_name_1)), build_array(StringName(good_name_2))));
+
+		SIGNAL_CHECK_FALSE(signal_animation_removed);
+
+		CHECK(animation_library->has_animation(good_name_1));
+		CHECK(animation_library->has_animation(good_name_2));
+	}
+
+	SUBCASE("Two same animations") {
+		CHECK_EQ(animation_library->add_animation(good_name_1, new_animation_1), OK);
+		CHECK_EQ(animation_library->add_animation(good_name_1, new_animation_2), OK);
+
+		SIGNAL_CHECK(signal_animation_added, build_array(build_array(StringName(good_name_1)), build_array(StringName(good_name_1))));
+
+		SIGNAL_CHECK(signal_animation_removed, build_array(build_array(StringName(good_name_1))));
+
+		CHECK(animation_library->has_animation(good_name_1));
+	}
+
+	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_removed);
+	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_added);
+}
+
+TEST_CASE("[AnimationLibrary] Remove Library") {
+	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
+	animation_library.instantiate();
+	Ref<Animation> new_animation_1 = memnew(Animation);
+
+	SIGNAL_WATCH(animation_library.ptr(), signal_animation_removed);
+
+	SUBCASE("Remove non-existing") {
+		ERR_PRINT_OFF;
+		animation_library->remove_animation(good_name_1);
+		ERR_PRINT_ON;
+	}
+
+	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_removed)
 }
 
 } //namespace TestAnimationLibrary
