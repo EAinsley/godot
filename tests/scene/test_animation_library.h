@@ -70,6 +70,7 @@ const String good_name_2 = "The moral law within!";
 
 const char *signal_animation_added = "animation_added";
 const char *signal_animation_removed = "animation_removed";
+const char *signal_animation_renamed = "animation_renamed";
 
 TEST_CASE("[AnimationLibrary] Name Validation") {
 	for (int i = 0; i < NUM_BAD_NAMES; i++) {
@@ -173,6 +174,61 @@ TEST_CASE("[AnimationLibrary] Remove animation") {
 	}
 
 	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_removed)
+}
+
+TEST_CASE("[AnimationLibrary] Rename animation") {
+	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
+	animation_library.instantiate();
+	Ref<Animation> new_animation_1 = memnew(Animation);
+	Ref<Animation> new_animation_2 = memnew(Animation);
+
+	SIGNAL_WATCH(animation_library.ptr(), SNAME(signal_animation_renamed));
+
+	SUBCASE("Rename non-existing animation") {
+		ERR_PRINT_OFF;
+		animation_library->rename_animation(good_name_1, good_name_2);
+		ERR_PRINT_ON;
+
+		SIGNAL_CHECK_FALSE(SNAME(signal_animation_renamed));
+	}
+
+	SUBCASE("Rename to an invalid name") {
+		animation_library->add_animation(good_name_1, new_animation_1);
+
+		ERR_PRINT_OFF;
+		for (int i = 0; i < NUM_BAD_NAMES; i++) {
+			animation_library->rename_animation(good_name_1, bad_names[i]);
+		}
+		animation_library->rename_animation(good_name_1, empty_name);
+		ERR_PRINT_ON;
+
+		SIGNAL_CHECK_FALSE(SNAME(signal_animation_renamed));
+		CHECK(animation_library->has_animation(good_name_1));
+	}
+
+	SUBCASE("Rename to an existing name") {
+		animation_library->add_animation(good_name_1, new_animation_1);
+		animation_library->add_animation(good_name_2, new_animation_2);
+		ERR_PRINT_OFF;
+		animation_library->rename_animation(good_name_1, good_name_2);
+		animation_library->rename_animation(good_name_1, good_name_1);
+		ERR_PRINT_ON;
+
+		SIGNAL_CHECK_FALSE(SNAME(signal_animation_renamed));
+		CHECK(animation_library->has_animation(good_name_1));
+		CHECK(animation_library->has_animation(good_name_2));
+	}
+
+	SUBCASE("Success rename") {
+		animation_library->add_animation(good_name_1, new_animation_1);
+		animation_library->rename_animation(good_name_1, good_name_2);
+
+		SIGNAL_CHECK(SNAME(signal_animation_renamed), build_array(build_array(StringName(good_name_1), StringName(good_name_2))));
+		CHECK_FALSE(animation_library->has_animation(good_name_1));
+		CHECK(animation_library->has_animation(good_name_2));
+	}
+
+	SIGNAL_UNWATCH(animation_library.ptr(), SNAME(signal_animation_renamed));
 }
 
 } //namespace TestAnimationLibrary
