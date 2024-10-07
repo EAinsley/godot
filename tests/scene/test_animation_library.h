@@ -148,7 +148,7 @@ TEST_CASE("[AnimationLibrary] Add Animation") { // Should this depends on the te
 	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_added);
 }
 
-TEST_CASE("[AnimationLibrary] Remove Library") {
+TEST_CASE("[AnimationLibrary] Remove animation") {
 	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
 	animation_library.instantiate();
 	Ref<Animation> new_animation_1 = memnew(Animation);
@@ -159,6 +159,17 @@ TEST_CASE("[AnimationLibrary] Remove Library") {
 		ERR_PRINT_OFF;
 		animation_library->remove_animation(good_name_1);
 		ERR_PRINT_ON;
+
+		SIGNAL_CHECK_FALSE(SNAME(signal_animation_removed));
+	}
+
+	SUBCASE("Remove animation") {
+		animation_library->add_animation(good_name_1, new_animation_1);
+		animation_library->remove_animation(good_name_1);
+
+		SIGNAL_CHECK(SNAME(signal_animation_removed), build_array(build_array(StringName(good_name_1))));
+
+		CHECK_FALSE(animation_library->has_animation(good_name_1));
 	}
 
 	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_removed)
