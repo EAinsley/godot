@@ -52,17 +52,17 @@ const int NUM_BAD_NAMES = 4;
 const char *empty_name = "";
 
 const String bad_names[NUM_BAD_NAMES] = {
-	String("[stop]"),
-	String("7,5"),
-	String(":("),
-	String("/home")
+	String("[left bracket]"),
+	String("comma,"),
+	String("colon:"),
+	String("/slash")
 };
 
 const String validated_names[NUM_BAD_NAMES]{
-	String("_stop]"),
-	String("7_5"),
-	String("_("),
-	String("_home")
+	String("_left bracket]"),
+	String("comma_"),
+	String("colon_"),
+	String("_slash")
 };
 
 const String good_name_1 = "The starry heavens above?";
@@ -71,6 +71,7 @@ const String good_name_2 = "The moral law within!";
 const char *signal_animation_added = "animation_added";
 const char *signal_animation_removed = "animation_removed";
 const char *signal_animation_renamed = "animation_renamed";
+const char *signal_animation_changed = "animation_changed";
 
 TEST_CASE("[AnimationLibrary] Name Validation") {
 	for (int i = 0; i < NUM_BAD_NAMES; i++) {
@@ -144,6 +145,9 @@ TEST_CASE("[AnimationLibrary] Add Animation") { // Should this depends on the te
 
 		CHECK(animation_library->has_animation(good_name_1));
 	}
+
+	// TODO: SUBCASE("Add the same animation with two different names")
+	// Relate to: #74824
 
 	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_removed);
 	SIGNAL_UNWATCH(animation_library.ptr(), signal_animation_added);
@@ -219,7 +223,7 @@ TEST_CASE("[AnimationLibrary] Rename animation") {
 		CHECK(animation_library->has_animation(good_name_2));
 	}
 
-	SUBCASE("Success rename") {
+	SUBCASE("Successful rename") {
 		animation_library->add_animation(good_name_1, new_animation_1);
 		animation_library->rename_animation(good_name_1, good_name_2);
 
@@ -229,6 +233,54 @@ TEST_CASE("[AnimationLibrary] Rename animation") {
 	}
 
 	SIGNAL_UNWATCH(animation_library.ptr(), SNAME(signal_animation_renamed));
+}
+
+TEST_CASE("[AnimationLibrary] Get animation") {
+	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
+	animation_library.instantiate();
+	Ref<Animation> new_animation_1 = memnew(Animation);
+	SUBCASE("No aimation") {
+		ERR_PRINT_OFF;
+		CHECK_EQ(animation_library->get_animation(good_name_1).ptr(), nullptr);
+		ERR_PRINT_ON;
+	}
+
+	SUBCASE("Successful returned") {
+		animation_library->add_animation(good_name_1, new_animation_1);
+		CHECK_EQ(animation_library->get_animation(good_name_1).ptr(), new_animation_1.ptr());
+	}
+}
+
+TEST_CASE("[AnimationLibrary] Get animation list") {
+	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
+	animation_library.instantiate();
+	String name_list[] = {
+		String("1 one"),
+		String("2 two"),
+		String("3 three"),
+		String("4 four"),
+	};
+	for (const String &name : name_list) {
+		Ref<Animation> animation = memnew(Animation);
+		animation_library->add_animation(name, animation);
+	}
+	List<StringName> animation_list;
+	animation_library->get_animation_list(&animation_list);
+	int i = 0;
+	for (const StringName &name : animation_list) {
+		CHECK_EQ(StringName(name_list[i++]), name);
+	}
+}
+
+TEST_CASE("[AnimationLibrary] Signal animation_changed") {
+	Ref<AnimationLibrary> animation_library = memnew(AnimationLibrary);
+	animation_library.instantiate();
+	Ref<Animation> new_animation = memnew(Animation);
+	animation_library->add_animation(good_name_1, new_animation);
+	SIGNAL_WATCH(animation_library.ptr(), SNAME(signal_animation_changed));
+	new_animation->add_track(Animation::TYPE_POSITION_3D);
+	SIGNAL_CHECK(SNAME(signal_animation_changed), build_array(build_array(StringName(good_name_1))));
+	SIGNAL_UNWATCH(animation_library.ptr(), SNAME(signal_animation_changed));
 }
 
 } //namespace TestAnimationLibrary
