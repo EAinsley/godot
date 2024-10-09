@@ -78,7 +78,7 @@ void AnimationLibrary::remove_animation(const StringName &p_name) {
 
 void AnimationLibrary::rename_animation(const StringName &p_name, const StringName &p_new_name) {
 	ERR_FAIL_COND_MSG(!animations.has(p_name), vformat("Animation not found: %s.", p_name));
-	ERR_FAIL_COND_MSG(!is_valid_animation_name(p_new_name), "Invalid animation name: '" + String(p_new_name) + "'.");
+	ERR_FAIL_COND_MSG(!is_valid_animation_name(p_new_name), vformat("Invalid animation name: '%s'.", p_new_name));
 	ERR_FAIL_COND_MSG(animations.has(p_new_name), vformat("Animation name \"%s\" already exists in library.", p_new_name));
 
 	animations.get(p_name)->disconnect_changed(callable_mp(this, &AnimationLibrary::_animation_changed));
