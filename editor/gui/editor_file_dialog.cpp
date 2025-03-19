@@ -2352,6 +2352,14 @@ void EditorFileDialog::add_side_menu(Control *p_menu, const String &p_title) {
 	side_vbox->add_child(p_menu);
 }
 
+void EditorFileDialog::hide_side_menu() {
+	side_vbox->set_visible(false);
+}
+
+void EditorFileDialog::show_side_menu() {
+	side_vbox->set_visible(true);
+}
+
 void EditorFileDialog::_update_side_menu_visibility(bool p_native_dlg) {
 	if (p_native_dlg) {
 		pathhb->set_visible(false);

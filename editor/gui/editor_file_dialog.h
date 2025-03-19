@@ -369,6 +369,8 @@ public:
 	bool are_previews_enabled();
 
 	void add_side_menu(Control *p_menu, const String &p_title = "");
+	void hide_side_menu();
+	void show_side_menu();
 
 	EditorFileDialog();
 	~EditorFileDialog();
