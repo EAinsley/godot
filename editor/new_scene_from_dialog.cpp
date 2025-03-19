@@ -54,6 +54,18 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	ancestor_sidemenu = memnew(VBoxContainer);
 	ancestor_sidemenu->add_margin_child(TTR("Inherit from..."), ancestor_list, true);
 
+	HBoxContainer *rename_box = memnew(HBoxContainer);
+	Label *l = memnew(Label(TTR("New Name:")));
+	l->set_theme_type_variation("HeaderSmall");
+	rename_box->add_child(l);
+
+	name_edit = memnew(LineEdit);
+	name_edit->set_structured_text_bidi_override(TextServer::STRUCTURED_TEXT_FILE);
+	name_edit->set_stretch_ratio(4);
+	name_edit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	rename_box->add_child(name_edit);
+	ancestor_sidemenu->add_child(rename_box);
+
 	add_side_menu(ancestor_sidemenu);
 }
 
@@ -74,7 +86,7 @@ void NewSceneFromDialog::config(Node *p_selected_node) {
 		while (scene_state.is_valid()) {
 			Ref<PackedScene> pack_data = ResourceLoader::load(scene_state->get_path());
 			if (!pack_data.is_valid()) {
-				return;
+				break;
 			}
 			// QUESTION - GEN_EDIT_STATE_INSTANCE?
 			Node *current_node = pack_data->instantiate(PackedScene::GEN_EDIT_STATE_INSTANCE);
@@ -84,14 +96,28 @@ void NewSceneFromDialog::config(Node *p_selected_node) {
 			instances.push_back(current_node);
 			ancestor_list->add_item(name, EditorNode::get_singleton()->get_class_icon(class_name));
 			ancestor_list->set_item_tooltip(item_count, path_name);
-			ancestor_list->set_item_metadata(item_count, pack_data);
+			ancestor_list->set_item_metadata(item_count, scene_state);
 
 			scene_state = current_node->get_scene_inherited_state();
 			item_count++;
 		};
-		item_count > 0 ? show_side_menu() : hide_side_menu();
 		for (Node *instance : instances) {
 			memdelete(instance);
 		}
 	}
+	if (item_count > 0) {
+		ancestor_list->select(0);
+	}
+	name_edit->set_text(p_selected_node->get_name());
+}
+Ref<SceneState> NewSceneFromDialog::get_selected_scene_state() const {
+	PackedInt32Array items = ancestor_list->get_selected_items();
+	if (items.size() > 0) {
+		return ancestor_list->get_item_metadata(items[0]);
+	}
+	return nullptr;
+}
+
+String NewSceneFromDialog::get_new_node_name() const {
+	return name_edit->get_text();
 }

@@ -3404,10 +3404,12 @@ void SceneTreeDock::_new_scene_from(const String &p_file) {
 				copy_3d->set_scale(Vector3(1, 1, 1));
 			}
 		}
-
-		if (base->get_scene_instance_state().is_valid()) {
-			copy->set_scene_inherited_state(base->get_scene_instance_state());
+		Ref<SceneState> inherited_state = new_scene_from_dialog->get_selected_scene_state();
+		if (inherited_state.is_valid()) {
+			copy->set_scene_inherited_state(inherited_state);
 		}
+
+		copy->set_name(new_scene_from_dialog->get_new_node_name());
 
 		Ref<PackedScene> sdata = memnew(PackedScene);
 		Error err = sdata->pack(copy);

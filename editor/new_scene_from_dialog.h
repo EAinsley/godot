@@ -31,14 +31,18 @@
 #pragma once
 
 #include "editor/gui/editor_file_dialog.h"
+#include "scene/gui/line_edit.h"
 
 class NewSceneFromDialog : public EditorFileDialog {
 private:
-	ItemList *ancestor_list = nullptr;
 	List<String> extensions;
+	ItemList *ancestor_list = nullptr;
+	LineEdit *name_edit = nullptr;
 	VBoxContainer *ancestor_sidemenu = nullptr;
 
 public:
 	NewSceneFromDialog();
 	void config(Node *p_selected_node);
+	Ref<SceneState> get_selected_scene_state() const;
+	String get_new_node_name() const;
 };
