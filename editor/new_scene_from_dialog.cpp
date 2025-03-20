@@ -47,7 +47,10 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	add_option(TTR("Reset Position"), Vector<String>(), true);
 	add_option(TTR("Reset Rotation"), Vector<String>(), false);
 	add_option(TTR("Reset Scale"), Vector<String>(), false);
-	// TODO - Add list
+	sidemenu = memnew(VBoxContainer);
+	sidemenu->set_alignment(BoxContainer::AlignmentMode::ALIGNMENT_END);
+	sidemenu->set_custom_minimum_size(Size2(150, 300));
+
 	ancestor_list = memnew(ItemList);
 	ancestor_list->set_select_mode(ItemList::SelectMode::SELECT_SINGLE);
 
@@ -55,7 +58,7 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	ancestor_sidemenu->add_margin_child(TTR("Inherit from..."), ancestor_list, true);
 
 	HBoxContainer *rename_box = memnew(HBoxContainer);
-	Label *l = memnew(Label(TTR("New Name:")));
+	Label *l = memnew(Label(TTR("Name:")));
 	l->set_theme_type_variation("HeaderSmall");
 	rename_box->add_child(l);
 
@@ -64,8 +67,10 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	name_edit->set_stretch_ratio(4);
 	name_edit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	rename_box->add_child(name_edit);
-	ancestor_sidemenu->add_child(rename_box);
 
+	add_side_menu(sidemenu);
+	sidemenu->add_child(ancestor_sidemenu);
+	sidemenu->add_child(rename_box);
 	add_side_menu(ancestor_sidemenu);
 }
 
@@ -107,6 +112,9 @@ void NewSceneFromDialog::config(Node *p_selected_node) {
 	}
 	if (item_count > 0) {
 		ancestor_list->select(0);
+		ancestor_sidemenu->set_visible(true);
+	} else {
+		ancestor_sidemenu->set_visible(false);
 	}
 	name_edit->set_text(p_selected_node->get_name());
 }

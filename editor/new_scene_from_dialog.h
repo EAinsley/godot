@@ -38,6 +38,7 @@ private:
 	List<String> extensions;
 	ItemList *ancestor_list = nullptr;
 	LineEdit *name_edit = nullptr;
+	VBoxContainer *sidemenu = nullptr;
 	VBoxContainer *ancestor_sidemenu = nullptr;
 
 public:
