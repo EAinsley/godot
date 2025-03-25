@@ -31,15 +31,22 @@
 #pragma once
 
 #include "editor/gui/editor_file_dialog.h"
+#include "scene/gui/check_box.h"
+#include "scene/gui/dialogs.h"
 #include "scene/gui/line_edit.h"
+#include "scene/gui/option_button.h"
+#include "scene/gui/panel_container.h"
 
-class NewSceneFromDialog : public EditorFileDialog {
+class NewSceneFromDialog : public ConfirmationDialog {
 private:
-	List<String> extensions;
-	ItemList *ancestor_list = nullptr;
-	LineEdit *name_edit = nullptr;
-	VBoxContainer *sidemenu = nullptr;
-	VBoxContainer *ancestor_sidemenu = nullptr;
+	Vector<String> extensions;
+	// ItemList *ancestor_list = nullptr;
+	OptionButton *ancestor_options = nullptr;
+	LineEdit *root_name_edit = nullptr;
+	LineEdit *file_path_edit = nullptr;
+	// VBoxContainer *sidemenu = nullptr;
+	// VBoxContainer *ancestor_sidemenu = nullptr;
+	EditorFileDialog *file_browse = nullptr;
 
 public:
 	NewSceneFromDialog();

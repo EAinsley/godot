@@ -1175,7 +1175,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				break;
 			}
 			new_scene_from_dialog->config(tocopy);
-			new_scene_from_dialog->popup_file_dialog();
+			new_scene_from_dialog->popup_centered();
 		} break;
 		case TOOL_COPY_NODE_PATH: {
 			List<Node *> selection = editor_selection->get_top_selected_node_list();
@@ -3358,39 +3358,40 @@ void SceneTreeDock::_new_scene_from(const String &p_file) {
 		// Root node cannot ever be unique name in its own Scene!
 		copy->set_unique_name_in_owner(false);
 
-		const Dictionary dict = new_scene_from_dialog->get_selected_options();
-		bool reset_position = dict.get(TTR("Reset Position"), true);
-		bool reset_scale = dict.get(TTR("Reset Scale"), false);
-		bool reset_rotation = dict.get(TTR("Reset Rotation"), false);
+		// TODO: fix here
+		// const Dictionary dict = new_scene_from_dialog->get_selected_options();
+		// bool reset_position = dict.get(TTR("Reset Position"), true);
+		// bool reset_scale = dict.get(TTR("Reset Scale"), false);
+		// bool reset_rotation = dict.get(TTR("Reset Rotation"), false);
 
-		Node2D *copy_2d = Object::cast_to<Node2D>(copy);
-		if (copy_2d != nullptr) {
-			if (reset_position) {
-				copy_2d->set_position(Vector2(0, 0));
-			}
-			if (reset_rotation) {
-				copy_2d->set_rotation(0);
-			}
-			if (reset_scale) {
-				copy_2d->set_scale(Size2(1, 1));
-			}
-		}
-		Node3D *copy_3d = Object::cast_to<Node3D>(copy);
-		if (copy_3d != nullptr) {
-			if (reset_position) {
-				copy_3d->set_position(Vector3(0, 0, 0));
-			}
-			if (reset_rotation) {
-				copy_3d->set_rotation(Vector3(0, 0, 0));
-			}
-			if (reset_scale) {
-				copy_3d->set_scale(Vector3(1, 1, 1));
-			}
-		}
-		Ref<SceneState> inherited_state = new_scene_from_dialog->get_selected_scene_state();
-		if (inherited_state.is_valid()) {
-			copy->set_scene_inherited_state(inherited_state);
-		}
+		// Node2D *copy_2d = Object::cast_to<Node2D>(copy);
+		// if (copy_2d != nullptr) {
+		// 	if (reset_position) {
+		// 		copy_2d->set_position(Vector2(0, 0));
+		// 	}
+		// 	if (reset_rotation) {
+		// 		copy_2d->set_rotation(0);
+		// 	}
+		// 	if (reset_scale) {
+		// 		copy_2d->set_scale(Size2(1, 1));
+		// 	}
+		// }
+		// Node3D *copy_3d = Object::cast_to<Node3D>(copy);
+		// if (copy_3d != nullptr) {
+		// 	if (reset_position) {
+		// 		copy_3d->set_position(Vector3(0, 0, 0));
+		// 	}
+		// 	if (reset_rotation) {
+		// 		copy_3d->set_rotation(Vector3(0, 0, 0));
+		// 	}
+		// 	if (reset_scale) {
+		// 		copy_3d->set_scale(Vector3(1, 1, 1));
+		// 	}
+		// }
+		// Ref<SceneState> inherited_state = new_scene_from_dialog->get_selected_scene_state();
+		// if (inherited_state.is_valid()) {
+		// 	copy->set_scene_inherited_state(inherited_state);
+		// }
 
 		copy->set_name(new_scene_from_dialog->get_new_node_name());
 
@@ -4049,7 +4050,7 @@ void SceneTreeDock::set_filter(const String &p_filter) {
 }
 
 void SceneTreeDock::save_branch_to_file(const String &p_directory) {
-	new_scene_from_dialog->set_current_dir(p_directory);
+	// new_scene_from_dialog->set_current_dir(p_directory);
 	_tool_selected(TOOL_NEW_SCENE_FROM);
 }
 
