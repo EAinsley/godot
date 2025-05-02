@@ -39,7 +39,7 @@
 
 class NewSceneFromDialog : public ConfirmationDialog {
 private:
-	Vector<String> extensions;
+	List<String> extensions;
 	// ItemList *ancestor_list = nullptr;
 	OptionButton *ancestor_options = nullptr;
 	LineEdit *root_name_edit = nullptr;
