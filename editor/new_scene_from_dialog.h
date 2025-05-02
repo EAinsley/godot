@@ -47,6 +47,10 @@ private:
 	// VBoxContainer *sidemenu = nullptr;
 	// VBoxContainer *ancestor_sidemenu = nullptr;
 	EditorFileDialog *file_browse = nullptr;
+	Button *path_button;
+
+protected:
+	void _notification(int p_what);
 
 public:
 	NewSceneFromDialog();

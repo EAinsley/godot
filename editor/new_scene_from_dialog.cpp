@@ -72,10 +72,7 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	HBoxContainer *hb = memnew(HBoxContainer);
 	file_path_edit = memnew(LineEdit);
 	file_path_edit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	Button *path_button = memnew(Button);
-	//FIXME - Broken icon
-	// `WARNING: Attempting to access theme items too early in ConfirmationDialog; prefer NOTIFICATION_POSTINITIALIZE and NOTIFICATION_THEME_CHANGED`
-	path_button->set_button_icon(get_editor_theme_icon(SNAME("Folder")));
+	path_button = memnew(Button);
 	register_text_enter(file_path_edit);
 	// TODO: connect pressed signal here to pop file browser
 	hb->add_child(file_path_edit);
@@ -148,4 +145,13 @@ Ref<SceneState> NewSceneFromDialog::get_selected_scene_state() const {
 
 String NewSceneFromDialog::get_new_node_name() const {
 	return root_name_edit->get_text();
+}
+
+void NewSceneFromDialog::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_THEME_CHANGED: {
+			// FIXME - doesn't work why?
+			path_button->set_button_icon(get_editor_theme_icon(SNAME("Folder")));
+		} break;
+	}
 }
