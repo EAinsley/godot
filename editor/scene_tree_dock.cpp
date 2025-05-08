@@ -3325,22 +3325,23 @@ void SceneTreeDock::set_selected(Node *p_node, bool p_emit_selected) {
 	scene_tree->set_selected(p_node, p_emit_selected);
 }
 
-void SceneTreeDock::_new_scene_from(const String &p_file) {
-	List<Node *> selection = editor_selection->get_top_selected_node_list();
+void SceneTreeDock::_new_scene_from(const String &p_file, const String &p_new_name, Node *p_selected_node, Array p_options, Ref<SceneState> p_scene_state) {
+	// List<Node *> selection = editor_selection->get_top_selected_node_list();
 
-	if (selection.size() != 1) {
-		accept->set_text(TTR("This operation requires a single selected node."));
-		accept->popup_centered();
-		return;
-	}
+	// if (selection.size() != 1) {
+	// 	accept->set_text(TTR("This operation requires a single selected node."));
+	// 	accept->popup_centered();
+	// 	return;
+	// }
 
-	if (EditorNode::get_singleton()->is_scene_open(p_file)) {
-		accept->set_text(TTR("Can't overwrite scene that is still open!"));
-		accept->popup_centered();
-		return;
-	}
+	// FIXME: move this to checking at create new scene from dialog
+	// if (EditorNode::get_singleton()->is_scene_open(p_file)) {
+	// 	accept->set_text(TTR("Can't overwrite scene that is still open!"));
+	// 	accept->popup_centered();
+	// 	return;
+	// }
 
-	Node *base = selection.front()->get();
+	Node *base = p_selected_node;
 
 	HashMap<const Node *, Node *> duplimap;
 	HashMap<const Node *, Node *> inverse_duplimap;
@@ -3358,40 +3359,42 @@ void SceneTreeDock::_new_scene_from(const String &p_file) {
 		// Root node cannot ever be unique name in its own Scene!
 		copy->set_unique_name_in_owner(false);
 
-		// TODO: fix here
+		// TODO: fix here Change the options to int
 		// const Dictionary dict = new_scene_from_dialog->get_selected_options();
-		// bool reset_position = dict.get(TTR("Reset Position"), true);
-		// bool reset_scale = dict.get(TTR("Reset Scale"), false);
-		// bool reset_rotation = dict.get(TTR("Reset Rotation"), false);
+		bool reset_position = p_options[0];
+		bool reset_scale = p_options[1];
+		bool reset_rotation = p_options[2];
 
-		// Node2D *copy_2d = Object::cast_to<Node2D>(copy);
-		// if (copy_2d != nullptr) {
-		// 	if (reset_position) {
-		// 		copy_2d->set_position(Vector2(0, 0));
-		// 	}
-		// 	if (reset_rotation) {
-		// 		copy_2d->set_rotation(0);
-		// 	}
-		// 	if (reset_scale) {
-		// 		copy_2d->set_scale(Size2(1, 1));
-		// 	}
-		// }
-		// Node3D *copy_3d = Object::cast_to<Node3D>(copy);
-		// if (copy_3d != nullptr) {
-		// 	if (reset_position) {
-		// 		copy_3d->set_position(Vector3(0, 0, 0));
-		// 	}
-		// 	if (reset_rotation) {
-		// 		copy_3d->set_rotation(Vector3(0, 0, 0));
-		// 	}
-		// 	if (reset_scale) {
-		// 		copy_3d->set_scale(Vector3(1, 1, 1));
-		// 	}
-		// }
-		// Ref<SceneState> inherited_state = new_scene_from_dialog->get_selected_scene_state();
-		// if (inherited_state.is_valid()) {
-		// 	copy->set_scene_inherited_state(inherited_state);
-		// }
+		// TODO: Move the whole creation to ... new_scene_from dialog?
+
+		Node2D *copy_2d = Object::cast_to<Node2D>(copy);
+		if (copy_2d != nullptr) {
+			if (reset_position) {
+				copy_2d->set_position(Vector2(0, 0));
+			}
+			if (reset_rotation) {
+				copy_2d->set_rotation(0);
+			}
+			if (reset_scale) {
+				copy_2d->set_scale(Size2(1, 1));
+			}
+		}
+		Node3D *copy_3d = Object::cast_to<Node3D>(copy);
+		if (copy_3d != nullptr) {
+			if (reset_position) {
+				copy_3d->set_position(Vector3(0, 0, 0));
+			}
+			if (reset_rotation) {
+				copy_3d->set_rotation(Vector3(0, 0, 0));
+			}
+			if (reset_scale) {
+				copy_3d->set_scale(Vector3(1, 1, 1));
+			}
+		}
+		Ref<SceneState> inherited_state = p_scene_state;
+		if (inherited_state.is_valid()) {
+			copy->set_scene_inherited_state(inherited_state);
+		}
 
 		copy->set_name(new_scene_from_dialog->get_new_node_name());
 
@@ -4850,7 +4853,8 @@ SceneTreeDock::SceneTreeDock(Node *p_scene_root, EditorSelection *p_editor_selec
 	// new_scene_from_dialog->add_option(TTR("Reset Rotation"), Vector<String>(), false);
 	// new_scene_from_dialog->add_option(TTR("Reset Scale"), Vector<String>(), false);
 	add_child(new_scene_from_dialog);
-	new_scene_from_dialog->connect("file_selected", callable_mp(this, &SceneTreeDock::_new_scene_from));
+	// TODO: Add a signal to create new scene
+	// new_scene_from_dialog->connect("file_selected", callable_mp(this, &SceneTreeDock::_new_scene_from));
 
 	menu = memnew(PopupMenu);
 	add_child(menu);

@@ -30,21 +30,13 @@
 
 #include "editor/new_scene_from_dialog.h"
 
+#include "core/config/project_settings.h"
 #include "editor/editor_node.h"
 #include "scene/gui/grid_container.h"
 #include "scene/gui/item_list.h"
 #include "scene/resources/packed_scene.h"
 
 NewSceneFromDialog::NewSceneFromDialog() {
-	// set_file_mode(EditorFileDialog::FILE_MODE_SAVE_FILE);
-
-	// Ref<PackedScene> sd = memnew(PackedScene);
-	// ResourceSaver::get_recognized_extensions(sd, &extensions);
-	// for (const String &extension : extensions) {
-	// 	add_filter("*." + extension, extension.to_upper());
-	// }
-	// set_title(TTR("Save New Scene As..."));
-
 	// Configure self
 	set_ok_button_text(TTR("Create"));
 	// Main Container
@@ -74,11 +66,24 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	file_path_edit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	path_button = memnew(Button);
 	register_text_enter(file_path_edit);
-	// TODO: connect pressed signal here to pop file browser
+	path_button->connect(SceneStringName(pressed), callable_mp(this, &NewSceneFromDialog::_browse_file));
 	hb->add_child(file_path_edit);
 	hb->add_child(path_button);
 	gc->add_child(memnew(Label(TTR("Path:"))));
 	gc->add_child(hb);
+
+	// Set up File Browser:
+	file_browser = memnew(EditorFileDialog);
+	add_child(file_browser);
+	file_browser->set_file_mode(EditorFileDialog::FILE_MODE_SAVE_FILE);
+	Ref<PackedScene> sd = memnew(PackedScene);
+	ResourceSaver::get_recognized_extensions(sd, &extensions);
+	for (const String &extension : extensions) {
+		file_browser->add_filter("*." + extension, extension.to_upper());
+	}
+	file_browser->set_title(TTR("Save New Scene As..."));
+
+	file_browser->connect("file_selected", callable_mp(this, &NewSceneFromDialog::_file_selected));
 
 	// TODO: Add reset options
 	GridContainer *checkbox_gc = memnew(GridContainer);
@@ -106,7 +111,7 @@ void NewSceneFromDialog::config(Node *p_selected_node) {
 	// TODO - The correct default_path
 	file_path_edit->set_text(p_selected_node->get_scene_file_path());
 
-	//ANCHOR - set optionbuttons
+	//ANCHOR - set option buttons
 	//NOTE - Need testing
 	ancestor_options->clear();
 	ancestor_options->add_item(p_selected_node->get_class_name(), 0);
@@ -149,9 +154,36 @@ String NewSceneFromDialog::get_new_node_name() const {
 
 void NewSceneFromDialog::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE:
 		case NOTIFICATION_THEME_CHANGED: {
 			// FIXME - doesn't work why?
 			path_button->set_button_icon(get_editor_theme_icon(SNAME("Folder")));
 		} break;
 	}
+}
+
+void NewSceneFromDialog::_bind_methods() {
+	ADD_SIGNAL(MethodInfo("create_branch_scene",
+			PropertyInfo(Variant::STRING, "file_path"),
+			PropertyInfo(Variant::STRING, "new_name"),
+			PropertyInfo(Variant::OBJECT, "selected_node", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, "Node"),
+			PropertyInfo(Variant::ARRAY, "options"),
+			PropertyInfo(Variant::OBJECT, "scene_state", PROPERTY_HINT_RESOURCE_TYPE, "SceneState")));
+}
+
+void NewSceneFromDialog::_browse_file() {
+	// TODO: set a default path
+	file_browser->popup_file_dialog();
+}
+
+void NewSceneFromDialog::_file_selected(const String &p_file) {
+	String path = ProjectSettings::get_singleton()->localize_path(p_file);
+	file_path_edit->set_text(path);
+	// _path_changed(path);
+
+	String filename = path.get_file().get_basename();
+	int select_start = path.rfind(filename);
+	file_path_edit->select(select_start, select_start + filename.length());
+	file_path_edit->set_caret_column(select_start + filename.length());
+	file_path_edit->grab_focus();
 }

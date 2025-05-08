@@ -46,11 +46,15 @@ private:
 	LineEdit *file_path_edit = nullptr;
 	// VBoxContainer *sidemenu = nullptr;
 	// VBoxContainer *ancestor_sidemenu = nullptr;
-	EditorFileDialog *file_browse = nullptr;
+	EditorFileDialog *file_browser = nullptr;
 	Button *path_button;
+
+	void _browse_file();
+	void _file_selected(const String &p_file);
 
 protected:
 	void _notification(int p_what);
+	void _bind_methods();
 
 public:
 	NewSceneFromDialog();
