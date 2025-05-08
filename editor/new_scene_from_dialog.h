@@ -49,8 +49,17 @@ private:
 	EditorFileDialog *file_browser = nullptr;
 	Button *path_button;
 
+	CheckBox *reset_position_cb;
+	CheckBox *reset_rotation_cb;
+	CheckBox *reset_scale_cb;
+	CheckBox *remove_script_cb;
+
+	Node *selected_node;
+
 	void _browse_file();
 	void _file_selected(const String &p_file);
+	void _create_new_node();
+	void _set_node_owner_recursive(Node *p_node, Node *p_owner, const HashMap<const Node *, Node *> &p_inverse_duplimap);
 
 protected:
 	void _notification(int p_what);

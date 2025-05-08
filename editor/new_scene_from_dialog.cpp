@@ -32,6 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "editor/editor_node.h"
+#include "scene/2d/node_2d.h"
 #include "scene/gui/grid_container.h"
 #include "scene/gui/item_list.h"
 #include "scene/resources/packed_scene.h"
@@ -88,16 +89,21 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	// TODO: Add reset options
 	GridContainer *checkbox_gc = memnew(GridContainer);
 	checkbox_gc->set_columns(2);
-	checkbox_gc->add_child(memnew(CheckBox(TTR("Reset Position"))));
-	checkbox_gc->add_child(memnew(CheckBox(TTR("Reset Rotation"))));
-	checkbox_gc->add_child(memnew(CheckBox(TTR("Reset Scale"))));
-	checkbox_gc->add_child(memnew(CheckBox(TTR("Remove Script"))));
+	reset_position_cb = memnew(CheckBox(TTR("Reset Position")));
+	reset_rotation_cb = memnew(CheckBox(TTR("Reset Rotation")));
+	reset_scale_cb = memnew(CheckBox(TTR("Reset Scale")));
+	remove_script_cb = memnew(CheckBox(TTR("Remove Script")));
+	checkbox_gc->add_child(reset_position_cb);
+	checkbox_gc->add_child(reset_rotation_cb);
+	checkbox_gc->add_child(reset_scale_cb);
+	checkbox_gc->add_child(remove_script_cb);
 	gc->add_child(memnew(Label(TTR("Configs:"))));
 	gc->add_child(checkbox_gc);
 	set_title(TTR("Create New Scene From..."));
 }
 
 void NewSceneFromDialog::config(Node *p_selected_node) {
+	selected_node = p_selected_node;
 	// Set Root Name
 	root_name_edit->set_text(p_selected_node->get_name());
 
@@ -186,4 +192,119 @@ void NewSceneFromDialog::_file_selected(const String &p_file) {
 	file_path_edit->select(select_start, select_start + filename.length());
 	file_path_edit->set_caret_column(select_start + filename.length());
 	file_path_edit->grab_focus();
+}
+
+void NewSceneFromDialog::_create_new_node() {
+	// List<Node *> selection = editor_selection->get_top_selected_node_list();
+
+	// if (selection.size() != 1) {
+	// 	accept->set_text(TTR("This operation requires a single selected node."));
+	// 	accept->popup_centered();
+	// 	return;
+	// }
+
+	// FIXME: move this to checking at create new scene from dialog
+	// if (EditorNode::get_singleton()->is_scene_open(p_file)) {
+	// 	accept->set_text(TTR("Can't overwrite scene that is still open!"));
+	// 	accept->popup_centered();
+	// 	return;
+	// }
+
+	Node *base = selected_node;
+
+	HashMap<const Node *, Node *> duplimap;
+	HashMap<const Node *, Node *> inverse_duplimap;
+	Node *copy = base->duplicate_from_editor(duplimap);
+
+	for (const KeyValue<const Node *, Node *> &item : duplimap) {
+		inverse_duplimap[item.value] = const_cast<Node *>(item.key);
+	}
+
+	if (copy) {
+		// Handle Unique Nodes.
+		for (int i = 0; i < copy->get_child_count(false); i++) {
+			_set_node_owner_recursive(copy->get_child(i, false), copy, inverse_duplimap);
+		}
+		// Root node cannot ever be unique name in its own Scene!
+		copy->set_unique_name_in_owner(false);
+
+		// TODO: fix here Change the options to int
+		// const Dictionary dict = new_scene_from_dialog->get_selected_options();
+		bool reset_position = reset_scale_cb->is_pressed();
+		bool reset_scale = reset_scale_cb->is_pressed();
+		bool reset_rotation = reset_rotation_cb->is_pressed();
+		bool remove_script = remove_script_cb->is_pressed();
+
+		Node2D *copy_2d = Object::cast_to<Node2D>(copy);
+		if (copy_2d != nullptr) {
+			if (reset_position) {
+				copy_2d->set_position(Vector2(0, 0));
+			}
+			if (reset_rotation) {
+				copy_2d->set_rotation(0);
+			}
+			if (reset_scale) {
+				copy_2d->set_scale(Size2(1, 1));
+			}
+		}
+		Node3D *copy_3d = Object::cast_to<Node3D>(copy);
+		if (copy_3d != nullptr) {
+			if (reset_position) {
+				copy_3d->set_position(Vector3(0, 0, 0));
+			}
+			if (reset_rotation) {
+				copy_3d->set_rotation(Vector3(0, 0, 0));
+			}
+			if (reset_scale) {
+				copy_3d->set_scale(Vector3(1, 1, 1));
+			}
+		}
+		Ref<SceneState> inherited_state = ancestor_options->get_selected_metadata();
+		if (inherited_state.is_valid()) {
+			copy->set_scene_inherited_state(inherited_state);
+		}
+
+		copy->set_name(root_name_edit->get_text());
+
+		Ref<PackedScene> sdata = memnew(PackedScene);
+		Error err = sdata->pack(copy);
+		memdelete(copy);
+
+		if (err != OK) {
+			// 	accept->set_text(TTR("Couldn't save new scene. Likely dependencies (instances) couldn't be satisfied."));
+			// 	accept->popup_centered();
+			// 	return;
+		}
+
+		// int flg = 0;
+		// if (EDITOR_GET("filesystem/on_save/compress_binary_resources")) {
+		// 	flg |= ResourceSaver::FLAG_COMPRESS;
+		// }
+
+		// err = ResourceSaver::save(sdata, p_file, flg);
+		// if (err != OK) {
+		// 	accept->set_text(TTR("Error saving scene."));
+		// 	accept->popup_centered();
+		// 	return;
+		// }
+	} else {
+		// accept->set_text(TTR("Error duplicating scene to save it."));
+		// accept->popup_centered();
+		// return;
+	}
+}
+
+void NewSceneFromDialog::_set_node_owner_recursive(Node *p_node, Node *p_owner, const HashMap<const Node *, Node *> &p_inverse_duplimap) {
+	HashMap<const Node *, Node *>::ConstIterator E = p_inverse_duplimap.find(p_node);
+
+	if (E) {
+		const Node *original = E->value;
+		if (original->get_owner()) {
+			p_node->set_owner(p_owner);
+		}
+	}
+
+	for (int i = 0; i < p_node->get_child_count(false); i++) {
+		_set_node_owner_recursive(p_node->get_child(i, false), p_owner, p_inverse_duplimap);
+	}
 }
