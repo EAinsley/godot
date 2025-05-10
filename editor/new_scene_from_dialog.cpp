@@ -32,6 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "editor/editor_node.h"
+#include "editor/editor_settings.h"
 #include "scene/2d/node_2d.h"
 #include "scene/gui/grid_container.h"
 #include "scene/gui/item_list.h"
@@ -99,28 +100,38 @@ NewSceneFromDialog::NewSceneFromDialog() {
 	checkbox_gc->add_child(remove_script_cb);
 	gc->add_child(memnew(Label(TTR("Configs:"))));
 	gc->add_child(checkbox_gc);
+
+	// Accept dialogue
+	accept = memnew(AcceptDialog);
+	add_child(accept);
+
 	set_title(TTR("Create New Scene From..."));
 }
 
 void NewSceneFromDialog::config(Node *p_selected_node) {
 	selected_node = p_selected_node;
 	// Set Root Name
-	root_name_edit->set_text(p_selected_node->get_name());
+	String root_name = p_selected_node->get_name();
+	root_name_edit->set_text(root_name);
 
+	String path_name = p_selected_node->get_owner()->get_scene_file_path().get_base_dir().path_join(root_name.to_snake_case() + ".tscn");
 	// Set Path Name
-	String existing;
-	if (extensions.size()) {
-		String root_name(p_selected_node->get_name());
-		root_name = EditorNode::adjust_scene_name_casing(root_name);
-		existing = root_name + "." + extensions.begin()->to_lower();
-	}
+	// String existing;
+	// if (extensions.size()) {
+	// 	String root_name(p_selected_node->get_name());
+	// 	root_name = EditorNode::adjust_scene_name_casing(root_name);
+	// 	existing = root_name + "." + extensions.begin()->to_lower();
+	// }
 	// TODO - The correct default_path
-	file_path_edit->set_text(p_selected_node->get_scene_file_path());
+	file_path_edit->set_text(path_name);
+	// TODO - Change the path when the base name changed
 
 	//ANCHOR - set option buttons
 	//NOTE - Need testing
 	ancestor_options->clear();
 	ancestor_options->add_item(p_selected_node->get_class_name(), 0);
+	ancestor_options->set_item_tooltip(0, "New");
+
 	int item_count = 1;
 	if (p_selected_node->get_scene_instance_state().is_valid()) {
 		Vector<Node *> instances;
@@ -133,11 +144,11 @@ void NewSceneFromDialog::config(Node *p_selected_node) {
 			// QUESTION - GEN_EDIT_STATE_INSTANCE?
 			Node *current_node = pack_data->instantiate(PackedScene::GEN_EDIT_STATE_INSTANCE);
 			String name = current_node->get_name();
-			String path_name = current_node->get_scene_file_path();
+			String ancestor_path_name = current_node->get_scene_file_path();
 			String class_name = current_node->get_class_name();
 			instances.push_back(current_node);
 			ancestor_options->add_item(name, item_count);
-			ancestor_options->set_item_tooltip(item_count, path_name);
+			ancestor_options->set_item_tooltip(item_count, ancestor_path_name);
 			ancestor_options->set_item_metadata(item_count, scene_state);
 
 			scene_state = current_node->get_scene_inherited_state();
@@ -162,19 +173,14 @@ void NewSceneFromDialog::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE:
 		case NOTIFICATION_THEME_CHANGED: {
-			// FIXME - doesn't work why?
 			path_button->set_button_icon(get_editor_theme_icon(SNAME("Folder")));
 		} break;
 	}
 }
 
 void NewSceneFromDialog::_bind_methods() {
-	ADD_SIGNAL(MethodInfo("create_branch_scene",
-			PropertyInfo(Variant::STRING, "file_path"),
-			PropertyInfo(Variant::STRING, "new_name"),
-			PropertyInfo(Variant::OBJECT, "selected_node", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT, "Node"),
-			PropertyInfo(Variant::ARRAY, "options"),
-			PropertyInfo(Variant::OBJECT, "scene_state", PROPERTY_HINT_RESOURCE_TYPE, "SceneState")));
+	ADD_SIGNAL(MethodInfo(SNAME("create_branch_scene"),
+			PropertyInfo(Variant::STRING, "file_path")));
 }
 
 void NewSceneFromDialog::_browse_file() {
@@ -195,21 +201,14 @@ void NewSceneFromDialog::_file_selected(const String &p_file) {
 }
 
 void NewSceneFromDialog::_create_new_node() {
-	// List<Node *> selection = editor_selection->get_top_selected_node_list();
+	String lpath = ProjectSettings::get_singleton()->localize_path(file_path_edit->get_text());
+	if (EditorNode::get_singleton()->is_scene_open(lpath)) {
+		accept->set_text(TTR("Can't overwrite scene that is still open!"));
+		accept->popup_centered();
+		return;
+	}
 
-	// if (selection.size() != 1) {
-	// 	accept->set_text(TTR("This operation requires a single selected node."));
-	// 	accept->popup_centered();
-	// 	return;
-	// }
-
-	// FIXME: move this to checking at create new scene from dialog
-	// if (EditorNode::get_singleton()->is_scene_open(p_file)) {
-	// 	accept->set_text(TTR("Can't overwrite scene that is still open!"));
-	// 	accept->popup_centered();
-	// 	return;
-	// }
-
+	// TODO - There's some problem with the selected node. The seelected node actually shouldn't be here?
 	Node *base = selected_node;
 
 	HashMap<const Node *, Node *> duplimap;
@@ -228,11 +227,10 @@ void NewSceneFromDialog::_create_new_node() {
 		// Root node cannot ever be unique name in its own Scene!
 		copy->set_unique_name_in_owner(false);
 
-		// TODO: fix here Change the options to int
-		// const Dictionary dict = new_scene_from_dialog->get_selected_options();
 		bool reset_position = reset_scale_cb->is_pressed();
 		bool reset_scale = reset_scale_cb->is_pressed();
 		bool reset_rotation = reset_rotation_cb->is_pressed();
+		// TODO - implementing remove_script
 		bool remove_script = remove_script_cb->is_pressed();
 
 		Node2D *copy_2d = Object::cast_to<Node2D>(copy);
@@ -271,26 +269,32 @@ void NewSceneFromDialog::_create_new_node() {
 		memdelete(copy);
 
 		if (err != OK) {
-			// 	accept->set_text(TTR("Couldn't save new scene. Likely dependencies (instances) couldn't be satisfied."));
-			// 	accept->popup_centered();
-			// 	return;
+			accept->set_text(TTR("Couldn't save new scene. Likely dependencies (instances) couldn't be satisfied."));
+			accept->popup_centered();
+			return;
 		}
 
-		// int flg = 0;
-		// if (EDITOR_GET("filesystem/on_save/compress_binary_resources")) {
-		// 	flg |= ResourceSaver::FLAG_COMPRESS;
-		// }
+		int flg = 0;
+		if (EDITOR_GET("filesystem/on_save/compress_binary_resources")) {
+			flg |= ResourceSaver::FLAG_COMPRESS;
+		}
 
-		// err = ResourceSaver::save(sdata, p_file, flg);
-		// if (err != OK) {
-		// 	accept->set_text(TTR("Error saving scene."));
-		// 	accept->popup_centered();
-		// 	return;
-		// }
+		// TODO: check file duplication!
+
+		err = ResourceSaver::save(sdata, lpath, flg);
+		if (err != OK) {
+			accept->set_text(TTR("Error saving scene."));
+			accept->popup_centered();
+			return;
+		}
+
+		emit_signal(SNAME("create_branch_scene"), lpath);
+
 	} else {
-		// accept->set_text(TTR("Error duplicating scene to save it."));
-		// accept->popup_centered();
-		// return;
+		// TODO: change to early return;
+		accept->set_text(TTR("Error duplicating scene to save it."));
+		accept->popup_centered();
+		return;
 	}
 }
 
@@ -307,4 +311,8 @@ void NewSceneFromDialog::_set_node_owner_recursive(Node *p_node, Node *p_owner, 
 	for (int i = 0; i < p_node->get_child_count(false); i++) {
 		_set_node_owner_recursive(p_node->get_child(i, false), p_owner, p_inverse_duplimap);
 	}
+}
+
+void NewSceneFromDialog::ok_pressed() {
+	_create_new_node();
 }

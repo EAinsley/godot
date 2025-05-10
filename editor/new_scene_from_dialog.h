@@ -38,6 +38,8 @@
 #include "scene/gui/panel_container.h"
 
 class NewSceneFromDialog : public ConfirmationDialog {
+	GDCLASS(NewSceneFromDialog, ConfirmationDialog);
+
 private:
 	List<String> extensions;
 	// ItemList *ancestor_list = nullptr;
@@ -54,16 +56,19 @@ private:
 	CheckBox *reset_scale_cb;
 	CheckBox *remove_script_cb;
 
+	AcceptDialog *accept = nullptr;
+
 	Node *selected_node;
 
 	void _browse_file();
 	void _file_selected(const String &p_file);
 	void _create_new_node();
 	void _set_node_owner_recursive(Node *p_node, Node *p_owner, const HashMap<const Node *, Node *> &p_inverse_duplimap);
+	virtual void ok_pressed() override;
 
 protected:
 	void _notification(int p_what);
-	void _bind_methods();
+	static void _bind_methods();
 
 public:
 	NewSceneFromDialog();

@@ -3325,106 +3325,25 @@ void SceneTreeDock::set_selected(Node *p_node, bool p_emit_selected) {
 	scene_tree->set_selected(p_node, p_emit_selected);
 }
 
-void SceneTreeDock::_new_scene_from(const String &p_file, const String &p_new_name, Node *p_selected_node, Array p_options, Ref<SceneState> p_scene_state) {
-	// List<Node *> selection = editor_selection->get_top_selected_node_list();
+void SceneTreeDock::_new_scene_from(const String &p_file) {
+	// FIXME - [] The validation should be done before the operation was initialized. The data should probably be transferred someway instead of getting the node separately that might cause inconsistency.
+	List<Node *> selection = editor_selection->get_top_selected_node_list();
 
-	// if (selection.size() != 1) {
-	// 	accept->set_text(TTR("This operation requires a single selected node."));
-	// 	accept->popup_centered();
-	// 	return;
-	// }
-
-	// FIXME: move this to checking at create new scene from dialog
-	// if (EditorNode::get_singleton()->is_scene_open(p_file)) {
-	// 	accept->set_text(TTR("Can't overwrite scene that is still open!"));
-	// 	accept->popup_centered();
-	// 	return;
-	// }
-
-	Node *base = p_selected_node;
-
-	HashMap<const Node *, Node *> duplimap;
-	HashMap<const Node *, Node *> inverse_duplimap;
-	Node *copy = base->duplicate_from_editor(duplimap);
-
-	for (const KeyValue<const Node *, Node *> &item : duplimap) {
-		inverse_duplimap[item.value] = const_cast<Node *>(item.key);
-	}
-
-	if (copy) {
-		// Handle Unique Nodes.
-		for (int i = 0; i < copy->get_child_count(false); i++) {
-			_set_node_owner_recursive(copy->get_child(i, false), copy, inverse_duplimap);
-		}
-		// Root node cannot ever be unique name in its own Scene!
-		copy->set_unique_name_in_owner(false);
-
-		// TODO: fix here Change the options to int
-		// const Dictionary dict = new_scene_from_dialog->get_selected_options();
-		bool reset_position = p_options[0];
-		bool reset_scale = p_options[1];
-		bool reset_rotation = p_options[2];
-
-		// TODO: Move the whole creation to ... new_scene_from dialog?
-
-		Node2D *copy_2d = Object::cast_to<Node2D>(copy);
-		if (copy_2d != nullptr) {
-			if (reset_position) {
-				copy_2d->set_position(Vector2(0, 0));
-			}
-			if (reset_rotation) {
-				copy_2d->set_rotation(0);
-			}
-			if (reset_scale) {
-				copy_2d->set_scale(Size2(1, 1));
-			}
-		}
-		Node3D *copy_3d = Object::cast_to<Node3D>(copy);
-		if (copy_3d != nullptr) {
-			if (reset_position) {
-				copy_3d->set_position(Vector3(0, 0, 0));
-			}
-			if (reset_rotation) {
-				copy_3d->set_rotation(Vector3(0, 0, 0));
-			}
-			if (reset_scale) {
-				copy_3d->set_scale(Vector3(1, 1, 1));
-			}
-		}
-		Ref<SceneState> inherited_state = p_scene_state;
-		if (inherited_state.is_valid()) {
-			copy->set_scene_inherited_state(inherited_state);
-		}
-
-		copy->set_name(new_scene_from_dialog->get_new_node_name());
-
-		Ref<PackedScene> sdata = memnew(PackedScene);
-		Error err = sdata->pack(copy);
-		memdelete(copy);
-
-		if (err != OK) {
-			accept->set_text(TTR("Couldn't save new scene. Likely dependencies (instances) couldn't be satisfied."));
-			accept->popup_centered();
-			return;
-		}
-
-		int flg = 0;
-		if (EDITOR_GET("filesystem/on_save/compress_binary_resources")) {
-			flg |= ResourceSaver::FLAG_COMPRESS;
-		}
-
-		err = ResourceSaver::save(sdata, p_file, flg);
-		if (err != OK) {
-			accept->set_text(TTR("Error saving scene."));
-			accept->popup_centered();
-			return;
-		}
-		_replace_with_branch_scene(p_file, base);
-	} else {
-		accept->set_text(TTR("Error duplicating scene to save it."));
+	if (selection.size() != 1) {
+		accept->set_text(TTR("This operation requires a single selected node."));
 		accept->popup_centered();
 		return;
 	}
+
+	if (EditorNode::get_singleton()->is_scene_open(p_file)) {
+		accept->set_text(TTR("Can't overwrite scene that is still open!"));
+		accept->popup_centered();
+		return;
+	}
+
+	Node *base = selection.front()->get();
+
+	_replace_with_branch_scene(p_file, base);
 }
 
 void SceneTreeDock::_set_node_owner_recursive(Node *p_node, Node *p_owner, const HashMap<const Node *, Node *> &p_inverse_duplimap) {
@@ -4854,7 +4773,7 @@ SceneTreeDock::SceneTreeDock(Node *p_scene_root, EditorSelection *p_editor_selec
 	// new_scene_from_dialog->add_option(TTR("Reset Scale"), Vector<String>(), false);
 	add_child(new_scene_from_dialog);
 	// TODO: Add a signal to create new scene
-	// new_scene_from_dialog->connect("file_selected", callable_mp(this, &SceneTreeDock::_new_scene_from));
+	new_scene_from_dialog->connect(SNAME("create_branch_scene"), callable_mp(this, &SceneTreeDock::_new_scene_from));
 
 	menu = memnew(PopupMenu);
 	add_child(menu);
